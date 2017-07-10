@@ -57,4 +57,8 @@ public class Locker<T> {
         return this.value;
     }
 
+    public final boolean isNull() {
+        return this.value == null;
+    }
+
 }

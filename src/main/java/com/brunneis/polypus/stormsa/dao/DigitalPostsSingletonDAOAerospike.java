@@ -71,21 +71,22 @@ public class DigitalPostsSingletonDAOAerospike implements DigitalPostsDAO,
 
         ClientPolicy policy = new ClientPolicy();
 
-        policy.readPolicyDefault.timeout = 1000;
+        policy.readPolicyDefault.timeout = 60000;
+        // Regardless the number of retries: 60s
         policy.readPolicyDefault.maxRetries = 5;
-        policy.readPolicyDefault.sleepBetweenRetries = 50;
+        policy.readPolicyDefault.sleepBetweenRetries = 500;
 
-        policy.writePolicyDefault.timeout = 1000;
+        policy.writePolicyDefault.timeout = 60000;
         policy.writePolicyDefault.maxRetries = 5;
-        policy.writePolicyDefault.sleepBetweenRetries = 50;
+        policy.writePolicyDefault.sleepBetweenRetries = 500;
         policy.writePolicyDefault.expiration = -1;
 
         policy.scanPolicyDefault.includeBinData = true;
         policy.scanPolicyDefault.priority = Priority.HIGH;
         policy.scanPolicyDefault.concurrentNodes = true;
-        policy.scanPolicyDefault.timeout = 1000;
+        policy.scanPolicyDefault.timeout = 60000;
         policy.scanPolicyDefault.maxRetries = 5;
-        policy.readPolicyDefault.sleepBetweenRetries = 50;
+        policy.readPolicyDefault.sleepBetweenRetries = 500;
 
         this.inputClient = new AerospikeClient(policy, inputHost, inputPort);
         this.outputClient = new AerospikeClient(policy, outputHost, outputPort);
@@ -112,18 +113,19 @@ public class DigitalPostsSingletonDAOAerospike implements DigitalPostsDAO,
         // Se limpia el buffer de posts del DAO y se carga
         this.posts = new ArrayList<>();
         this.inputClient.scanAll(null, inputNamespace, inputSet, this);
-
         return this.posts;
     }
 
     @Override
     // Called only under readAllAvailableInputDigitalPosts() (synchronized)
     public void scanCallback(Key key, Record record) throws AerospikeException {
-        this.posts.add(new BasicDigitalPostContent(
-                record.getString("rowkey"),
-                record.getString("content"),
-                record.getString("language")
-        ));
+        synchronized (this.posts) {
+            this.posts.add(new BasicDigitalPostContent(
+                    record.getString("rowkey"),
+                    record.getString("content"),
+                    record.getString("language")
+            ));
+        }
 
         // Delete every read record
         this.inputClient.delete(null, key);

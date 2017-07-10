@@ -20,6 +20,7 @@
 package com.brunneis.polypus.stormsa.bolt.en;
 
 import com.brunneis.polypus.stormsa.conf.Conf;
+import com.brunneis.polypus.stormsa.dao.DigitalPostsDAO;
 import com.brunneis.polypus.stormsa.dao.DigitalPostsSingletonFactoryDAO;
 import com.brunneis.polypus.stormsa.spout.PolypusSpout;
 import java.util.ArrayList;
@@ -41,6 +42,7 @@ public class SentimentBoltEnglish extends BaseBasicBolt {
     // The map is filled with the setup of the bolt, but also modified during 
     // the execution, swaped by a deep copy at execute()
     private Map<String, Map<String, Double>> PriorProb = new HashPerl<String, Map<String, Double>>();
+    private DigitalPostsDAO dpdao;
 
     // Only written to during the bolt setup
     private Map<String, String> Lex_contr = new HashPerl<String, String>();
@@ -64,7 +66,7 @@ public class SentimentBoltEnglish extends BaseBasicBolt {
     @Override
     // train_en, lex_en load
     public void prepare(Map config, TopologyContext context) {
-
+        dpdao = DigitalPostsSingletonFactoryDAO.getDigitalPostDAOinstance(Conf.OUTPUT_BUFFER_DB.value().CURRENT.value());
         perl = Perl.getInstance();
 
         List<String> train = new ArrayList<String>();
@@ -385,18 +387,18 @@ public class SentimentBoltEnglish extends BaseBasicBolt {
             }
         }
         if (!found2) {
-            DigitalPostsSingletonFactoryDAO.getDigitalPostDAOinstance(Conf.OUTPUT_BUFFER_DB.value().CURRENT.value()).writeSentiment(rowkey, 0);
+            dpdao.writeSentiment(rowkey, 0);
             return;
         }
 
         Double np = PostProb.get("NEGATIVE");
         Double pp = PostProb.get("POSITIVE");
         if (pp > np) {
-            DigitalPostsSingletonFactoryDAO.getDigitalPostDAOinstance(Conf.OUTPUT_BUFFER_DB.value().CURRENT.value()).writeSentiment(rowkey, 1);
+            dpdao.writeSentiment(rowkey, 1);
         } else if (np > pp) {
-            DigitalPostsSingletonFactoryDAO.getDigitalPostDAOinstance(Conf.OUTPUT_BUFFER_DB.value().CURRENT.value()).writeSentiment(rowkey, -1);
+            dpdao.writeSentiment(rowkey, -1);
         } else {
-            DigitalPostsSingletonFactoryDAO.getDigitalPostDAOinstance(Conf.OUTPUT_BUFFER_DB.value().CURRENT.value()).writeSentiment(rowkey, 0);
+            dpdao.writeSentiment(rowkey, 0);
         }
     }
 
